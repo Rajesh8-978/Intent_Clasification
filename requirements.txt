@@ -1,0 +1,2 @@
+# Default runtime for local PDF/T5 classification.
+-r requirements.intent-classification.txt
