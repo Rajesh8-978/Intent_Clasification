@@ -1,0 +1,7 @@
+# T5/PDF runtime dependencies.
+# Version 0.0.2 supports the documented T5 and FLAN-T5 paths and predates
+# the optional DSPy/LiteLLM dependency chain that can require Rust on Windows.
+open-intent-classifier==0.0.2
+
+# Required for scripts/classify_pdf_email.py when importing text-based PDFs.
+pypdf>=4.0.0
