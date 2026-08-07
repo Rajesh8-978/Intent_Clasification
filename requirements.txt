@@ -1,2 +1,7 @@
-# Default runtime for local PDF/T5 classification.
--r requirements.intent-classification.txt
+# PDF text extraction
+pypdf>=4.0
+
+# Local zero-shot classification
+torch>=2.2
+transformers>=4.41,<6
+sentencepiece>=0.2

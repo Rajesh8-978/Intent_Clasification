@@ -11,4 +11,9 @@ env/
 .mypy_cache/
 .ruff_cache/
 .model_cache/
+tmp/
+tmp_render/
+rendered_speech_check/
+.coverage
+htmlcov/
 AGENTS.md

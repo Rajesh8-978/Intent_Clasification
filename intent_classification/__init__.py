@@ -1,8 +1,8 @@
 """Business intent classification for extracted email text."""
 
+from intent_classification.classifiers import ZeroShotIntentClassifier
 from intent_classification.config import IntentClassifierOptions
 from intent_classification.entity_types import EntityType
-from intent_classification.factory import create_intent_classifier
 from intent_classification.labels import IIntentLabelProvider, StaticIntentLabelProvider
 from intent_classification.models import (
     ClassificationPrediction,
@@ -20,5 +20,5 @@ __all__ = [
     "IntentClassificationService",
     "PredictionCandidate",
     "StaticIntentLabelProvider",
-    "create_intent_classifier",
+    "ZeroShotIntentClassifier",
 ]

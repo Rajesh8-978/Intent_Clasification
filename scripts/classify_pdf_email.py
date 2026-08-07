@@ -11,8 +11,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from intent_classification import IntentClassificationService, IntentClassifierOptions
-from intent_classification.factory import create_intent_classifier
+from intent_classification import (
+    IntentClassificationService,
+    IntentClassifierOptions,
+    ZeroShotIntentClassifier,
+)
+from intent_classification.config import DEFAULT_MODEL
 from intent_classification.pdf_text_extractor import extract_text_from_pdf
 
 
@@ -29,15 +33,14 @@ async def main() -> int:
     )
     parser.add_argument("pdf", help="Path to the PDF email.")
     parser.add_argument(
-        "--provider",
-        default="T5",
-        choices=["T5", "Embedding", "OpenAI", "SmolLM2"],
-        help="Classifier provider.",
+        "--model",
+        default=DEFAULT_MODEL,
+        help="Local Hugging Face zero-shot model name.",
     )
     parser.add_argument(
-        "--model",
-        default="small",
-        help="Model name. Use 'flan-t5-base' for the higher-accuracy T5 model.",
+        "--device",
+        default=None,
+        help="Optional Transformers device, for example 'cpu' or 'cuda:0'.",
     )
     parser.add_argument("--top-k", type=positive_int, default=3, help="Number of top candidates.")
     args = parser.parse_args()
@@ -45,11 +48,14 @@ async def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     options = IntentClassifierOptions(
-        provider=args.provider,
         model=args.model,
         top_k=args.top_k,
+        device=args.device,
     )
-    classifier = create_intent_classifier(options)
+    classifier = ZeroShotIntentClassifier(
+        model_name=options.model,
+        device=options.device,
+    )
     service = IntentClassificationService(classifier, options=options)
 
     email_text = extract_text_from_pdf(args.pdf)

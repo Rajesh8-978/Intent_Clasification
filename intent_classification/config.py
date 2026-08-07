@@ -1,40 +1,39 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Mapping
 
+from intent_classification.classifiers.zero_shot import DEFAULT_ZERO_SHOT_MODEL
 
-DEFAULT_PROVIDER = "T5"
-DEFAULT_MODEL = "small"
+DEFAULT_MODEL = DEFAULT_ZERO_SHOT_MODEL
 DEFAULT_TOP_K = 3
 
 
 @dataclass(frozen=True)
 class IntentClassifierOptions:
-    """Configuration for selecting and tuning an intent classifier."""
+    """Configuration for the local zero-shot intent classifier."""
 
-    provider: str = DEFAULT_PROVIDER
     model: str = DEFAULT_MODEL
     top_k: int = DEFAULT_TOP_K
-    fail_on_unknown_label: bool = True
-    provider_options: Mapping[str, Any] = field(default_factory=dict)
+    device: str | int | None = None
 
     def __post_init__(self) -> None:
         top_k = int(self.top_k)
         if top_k < 1:
             raise ValueError("IntentClassifier.TopK must be at least 1.")
-        if not isinstance(self.provider_options, Mapping):
-            raise ValueError("IntentClassifier.ProviderOptions must be an object.")
+        model = str(self.model).strip()
+        if not model:
+            raise ValueError("IntentClassifier.Model must not be empty.")
+        if self.device is not None and (
+            isinstance(self.device, bool) or not isinstance(self.device, (str, int))
+        ):
+            raise ValueError("IntentClassifier.Device must be a device name or index.")
 
-        object.__setattr__(self, "provider", str(self.provider))
-        object.__setattr__(self, "model", str(self.model))
+        object.__setattr__(self, "model", model)
         object.__setattr__(self, "top_k", top_k)
-        object.__setattr__(
-            self,
-            "fail_on_unknown_label",
-            _as_bool(self.fail_on_unknown_label, "IntentClassifier.FailOnUnknownLabel"),
-        )
-        object.__setattr__(self, "provider_options", dict(self.provider_options))
+        if isinstance(self.device, str):
+            normalized_device = self.device.strip()
+            object.__setattr__(self, "device", normalized_device or None)
 
     @classmethod
     def from_dict(cls, settings: Mapping[str, Any] | None) -> "IntentClassifierOptions":
@@ -46,23 +45,7 @@ class IntentClassifierOptions:
             raise ValueError("IntentClassifier configuration must be an object.")
 
         return cls(
-            provider=section.get("Provider", DEFAULT_PROVIDER),
             model=section.get("Model", DEFAULT_MODEL),
             top_k=section.get("TopK", DEFAULT_TOP_K),
-            fail_on_unknown_label=section.get("FailOnUnknownLabel", True),
-            provider_options=section.get("ProviderOptions", {}),
+            device=section.get("Device"),
         )
-
-
-def _as_bool(value: Any, setting_name: str) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        normalized = value.strip().casefold()
-        if normalized in {"true", "1", "yes", "y", "on"}:
-            return True
-        if normalized in {"false", "0", "no", "n", "off"}:
-            return False
-    if isinstance(value, int) and value in {0, 1}:
-        return bool(value)
-    raise ValueError(f"{setting_name} must be a boolean.")

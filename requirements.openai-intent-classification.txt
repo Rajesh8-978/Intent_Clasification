@@ -1,2 +1,0 @@
-# Required only for Provider=OpenAI.
-openai>=1.0.0

@@ -1,161 +1,157 @@
-# Intent Classification
+# Local PDF Intent Classification
 
-Python utilities for classifying the business intent of email text extracted from PDF files. The package returns a business-friendly intent label and maps that label to the application `EntityType` used by downstream workflows.
+Classify business emails stored as PDF files into one of 18 predefined intents. The application extracts the PDF text, runs an open-source zero-shot model locally, and maps the selected business label to the application's `EntityType`.
 
-## What It Does
+No paid LLM API or API key is required. An internet connection is needed only when the model is downloaded for the first time.
 
-This project supports a simple classification pipeline:
+## How It Works
 
 ```text
 PDF email
-  -> text extraction
-  -> text cleanup
-  -> intent classification
-  -> business label
-  -> EntityType mapping
-  -> workflow routing
+  -> extract selectable text
+  -> normalize whitespace
+  -> compare text with 18 detailed label definitions
+  -> rank labels with confidence scores
+  -> map the winning label to EntityType
+  -> return JSON
 ```
 
-Example output:
+The default model is [`MoritzLaurer/deberta-v3-base-zeroshot-v2.0`](https://huggingface.co/MoritzLaurer/deberta-v3-base-zeroshot-v2.0). It is designed for zero-shot classification, which means labels can be added or refined without fine-tuning the model.
 
-```json
-{
-  "entityType": "MiscRequest",
-  "intentLabel": "Miscellaneous Request",
-  "confidence": null,
-  "topPredictions": [
-    {
-      "label": "Miscellaneous Request",
-      "score": null
-    }
-  ]
-}
-```
+## Intent Labels
 
-Some local providers return only the winning label. In those cases `confidence` and `score` are `null`.
+| Business label | EntityType | Typical content |
+| --- | --- | --- |
+| Statement of Affairs | `StatementOfAffairs` | Insolvency financial disclosures, assets, and liabilities |
+| Payment Request | `PaymentRequest` | Payment, reimbursement, invoice, or approval requests |
+| Cheque Deposit Request | `ChequeDepositRequest` | Depositing, clearing, or recording a cheque |
+| Travel Application | `TravelApplication` | Travel approval, itinerary, accommodation, or expenses |
+| Insurance Policy | `InsurancePolicy` | Policies, coverage, premiums, renewals, or claims |
+| Vehicle Documents | `Vehicle` | Registration, COE, ownership, licensing, or vehicle records |
+| Real Estate | `RealEstate` | Land, property, title, mortgage, sale, or valuation |
+| Company Shares | `CompanyShares` | Shares, securities, certificates, dividends, or ownership |
+| Case Trustee | `CaseTrustee` | Trustee appointment, authority, identity, or instructions |
+| Case Business | `CaseBusiness` | Business operations or records associated with a case |
+| Business Entity | `BusinessEntity` | Company registration, ownership, directors, or structure |
+| Case Creditor | `CaseCreditor` | Proof of debt, creditor claims, or creditor details |
+| Asset | `Asset` | General non-cash assets without a more specific category |
+| Cash Asset | `AssetCash` | Cash, bank accounts, balances, deposits, or savings |
+| Prospect | `Prospect` | New client enquiries, leads, or onboarding opportunities |
+| General Case | `Case` | Case administration without a more specific case category |
+| Email | `Email` | Email delivery, forwarding, mailbox, or attachment issues |
+| Miscellaneous Request | `MiscRequest` | Requests that do not match another available category |
 
-## Supported Intent Labels
-
-The default label set is mapped in `intent_classification/entity_types.py` and currently includes:
-
-- Statement of Affairs
-- Payment Request
-- Cheque Deposit Request
-- Travel Application
-- Insurance Policy
-- Vehicle Documents
-- Real Estate
-- Company Shares
-- Case Trustee
-- Case Business
-- Business Entity
-- Case Creditor
-- Asset
-- Cash Asset
-- Prospect
-- General Case
-- Email
-- Miscellaneous Request
-
-## Project Structure
-
-```text
-intent_classification/
-  classifiers/              Provider adapters
-  config.py                 Runtime configuration
-  entity_types.py           Label to EntityType mapping
-  factory.py                Classifier factory
-  pdf_text_extractor.py     Text-based PDF extraction
-  service.py                Intent classification service
-scripts/
-  classify_pdf_email.py     CLI for classifying a PDF
-  install_t5_dependencies.ps1
-tests/                      Unit tests
-```
+The detailed model-facing definitions live in `intent_classification/label_definitions.py`. The label-to-entity mappings live in `intent_classification/entity_types.py`.
 
 ## Requirements
 
 - Python 3.10 or newer
-- Windows PowerShell for the included install helper
-- Text-based PDFs for direct PDF classification
+- Windows PowerShell for the commands below
+- A text-based PDF with selectable text
+- Internet access for the first model download
 
-Scanned or image-only PDFs need OCR before classification. After OCR, pass the extracted text into `IntentClassificationService.classify_email_text(...)`.
+The model runs on CPU by default. A compatible CUDA GPU can improve speed but is not required.
 
 ## Installation
 
-Create and activate a virtual environment:
+From PowerShell:
 
 ```powershell
+cd "C:\Users\Admin\OneDrive - Zest Labs\Documents\Data\intent_classification"
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-```
-
-Install the default PDF/T5 runtime:
-
-```powershell
 python -m pip install -r requirements.txt
 ```
 
-Or use the Windows helper:
+If PowerShell blocks virtual-environment activation for the current session:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\install_t5_dependencies.ps1
-```
-
-For the OpenAI provider, install the optional OpenAI dependency:
-
-```powershell
-python -m pip install -r requirements.openai-intent-classification.txt
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
 ```
 
 ## Classify A PDF
 
-Run this from the project root:
+Run the classifier from the project root:
 
 ```powershell
 python scripts\classify_pdf_email.py "C:\path\to\email.pdf"
 ```
 
-Example with your local PDF:
+Vehicle document example:
 
 ```powershell
 python scripts\classify_pdf_email.py "C:\Users\Admin\Downloads\Vehicle - 2 (1).pdf"
 ```
 
-Use the larger FLAN-T5 model when accuracy matters more than speed:
+Proof-of-debt example:
 
 ```powershell
-python scripts\classify_pdf_email.py "C:\path\to\email.pdf" --provider T5 --model flan-t5-base
+python scripts\classify_pdf_email.py "C:\Users\Admin\Downloads\POD -2 (1).pdf"
 ```
 
-Other supported provider names:
+The first classification downloads the model from Hugging Face. Later classifications use the cached local model.
+
+## Output
+
+```json
+{
+  "entityType": "Vehicle",
+  "intentLabel": "Vehicle Documents",
+  "confidence": 0.91,
+  "topPredictions": [
+    {
+      "label": "Vehicle Documents",
+      "score": 0.91
+    },
+    {
+      "label": "Asset",
+      "score": 0.05
+    },
+    {
+      "label": "General Case",
+      "score": 0.02
+    }
+  ]
+}
+```
+
+The scores rank labels for the current document. They are useful for comparison, but they should not be treated as perfectly calibrated probabilities.
+
+Use `--top-k` to change the number of returned candidates:
 
 ```powershell
-python scripts\classify_pdf_email.py "C:\path\to\email.pdf" --provider Embedding
-python scripts\classify_pdf_email.py "C:\path\to\email.pdf" --provider SmolLM2
-python scripts\classify_pdf_email.py "C:\path\to\email.pdf" --provider OpenAI --model gpt-4.1-mini
+python scripts\classify_pdf_email.py "C:\path\to\email.pdf" --top-k 5
 ```
 
-## Use In Python
+Select a device explicitly when needed:
+
+```powershell
+python scripts\classify_pdf_email.py "C:\path\to\email.pdf" --device cpu
+python scripts\classify_pdf_email.py "C:\path\to\email.pdf" --device cuda:0
+```
+
+## Python Usage
 
 ```python
 import asyncio
 
 from intent_classification import IntentClassificationService, IntentClassifierOptions
-from intent_classification.factory import create_intent_classifier
+from intent_classification import ZeroShotIntentClassifier
 
 
 async def main() -> None:
-    options = IntentClassifierOptions(
-        provider="T5",
-        model="small",
-        top_k=3,
+    options = IntentClassifierOptions(top_k=3, device="cpu")
+    classifier = ZeroShotIntentClassifier(
+        model_name=options.model,
+        device=options.device,
     )
-    classifier = create_intent_classifier(options)
     service = IntentClassificationService(classifier, options=options)
 
-    result = await service.classify_email_text("Extracted email text goes here")
+    result = await service.classify_email_text(
+        "Please provide the COE renewal and registration details for vehicle SMD4125Y."
+    )
     print(result.to_dict())
 
 
@@ -165,23 +161,29 @@ asyncio.run(main())
 Configuration can also be loaded from a dictionary:
 
 ```python
-settings = {
-    "IntentClassifier": {
-        "Provider": "T5",
-        "Model": "small",
-        "TopK": 3,
-        "ProviderOptions": {
-            "device": "cpu"
+options = IntentClassifierOptions.from_dict(
+    {
+        "IntentClassifier": {
+            "Model": "MoritzLaurer/deberta-v3-base-zeroshot-v2.0",
+            "TopK": 3,
+            "Device": "cpu"
         }
     }
-}
-
-options = IntentClassifierOptions.from_dict(settings)
+)
 ```
+
+## Add Or Improve A Label
+
+1. Add or update the label mapping in `intent_classification/entity_types.py`.
+2. Add or improve its business description in `intent_classification/label_definitions.py`.
+3. Add representative test cases for the new intent.
+4. Test against a collection of real documents before deploying the change.
+
+Clear descriptions matter. Include the business meaning, common document types, and distinguishing terminology. Keep `Email` and `Miscellaneous Request` narrow so they do not override more specific categories.
 
 ## Testing
 
-The unit tests use mocked classifiers, so they do not require downloading model packages.
+The unit tests use an in-memory fake model, so they do not download model weights:
 
 ```powershell
 python -m unittest discover -v
@@ -190,47 +192,44 @@ python -m unittest discover -v
 Optional syntax check:
 
 ```powershell
-python -m compileall intent_classification tests
+python -m compileall intent_classification tests scripts
 ```
 
-## Configuration
+## Project Structure
 
-Default configuration:
-
-```json
-{
-  "IntentClassifier": {
-    "Provider": "T5",
-    "Model": "small",
-    "TopK": 3
-  }
-}
+```text
+intent_classification/
+  classifiers/
+    base.py                Classifier interface
+    zero_shot.py           Local Hugging Face classifier
+  config.py                Model, device, and TopK settings
+  entity_types.py          Label-to-EntityType mapping
+  label_definitions.py     Detailed meaning of every label
+  labels.py                Label provider abstraction
+  models.py                Result data structures
+  pdf_text_extractor.py    PDF text extraction
+  service.py               Validation and workflow coordination
+  text_cleaning.py         Input normalization
+scripts/
+  classify_pdf_email.py    Command-line entry point
+tests/                     Unit tests
+requirements.txt           Runtime dependencies
 ```
 
-Available options:
+## Troubleshooting
 
-- `Provider`: `T5`, `Embedding`, `OpenAI`, or `SmolLM2`
-- `Model`: provider-specific model name
-- `TopK`: number of candidates to keep, must be at least `1`
-- `FailOnUnknownLabel`: fail when a provider returns an unmapped label, defaults to `true`
-- `ProviderOptions`: provider-specific settings such as `{ "device": "cpu" }` or `{ "api_key": "..." }`
+**No text could be extracted**
 
-For OpenAI, you can also set `OPENAI_API_KEY` in your environment and omit `api_key` from `ProviderOptions`.
+The PDF is probably scanned or image-only. Run OCR first, then classify the searchable PDF or pass the OCR text to `classify_email_text(...)`.
 
-## Add Or Change Labels
+**First run is slow**
 
-Business labels are defined in `intent_classification/entity_types.py`.
+The model is being downloaded and loaded. Later runs use the local cache, although loading the model still takes some time.
 
-To add a label:
+**A generic label wins**
 
-1. Add the business-friendly label to `LABEL_TO_ENTITY_TYPE`.
-2. Map it to the correct `EntityType`.
-3. Add or update tests if the label is part of a required workflow.
+Review the extracted text and improve the relevant entry in `label_definitions.py`. Accuracy should be evaluated using real examples from every category.
 
-No model retraining is required for the default dynamic-label providers.
+**Out of memory**
 
-## Notes
-
-- `open-intent-classifier==0.0.2` is pinned for the T5/PDF path because it avoids a newer optional dependency chain that can require Rust/Cargo on Windows.
-- Direct PDF classification works best for PDFs that already contain selectable text.
-- Keep secrets such as API keys out of Git. Use environment variables or local-only `.env` files.
+Close other memory-heavy applications, run with `--device cpu`, or configure a smaller compatible zero-shot classification model with `--model`.
