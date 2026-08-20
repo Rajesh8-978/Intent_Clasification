@@ -1,3 +1,5 @@
+"""Business descriptions used as hypotheses by the zero-shot NLI model."""
+
 from __future__ import annotations
 
 
@@ -70,7 +72,10 @@ LABEL_DESCRIPTIONS: dict[str, str] = {
 
 
 def build_label_hypothesis(label: str) -> str:
+    """Expand a short business label into a model-readable hypothesis."""
+
     description = LABEL_DESCRIPTIONS.get(label)
+    # Custom runtime labels remain supported even when no detailed definition exists.
     if description is None:
         return f"The primary business intent of this message is {label}."
     return f"The primary business intent of this message is {label}: {description}."

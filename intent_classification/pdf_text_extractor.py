@@ -9,6 +9,7 @@ def extract_text_from_pdf(pdf_path: str | Path) -> str:
     Scanned/image-only PDFs should go through OCR before intent classification.
     """
 
+    # Resolve the path before reading so errors report one unambiguous location.
     path = Path(pdf_path).expanduser().resolve()
     if not path.exists():
         raise FileNotFoundError(f"PDF file not found: {path}")
@@ -20,6 +21,8 @@ def extract_text_from_pdf(pdf_path: str | Path) -> str:
     except ImportError as exc:
         raise RuntimeError("PDF text extraction requires the 'pypdf' package.") from exc
 
+    # Preserve page order because subjects and opening paragraphs normally carry
+    # the strongest intent signal.
     reader = PdfReader(str(path))
     page_text = [page.extract_text() or "" for page in reader.pages]
     text = "\n".join(page_text).strip()

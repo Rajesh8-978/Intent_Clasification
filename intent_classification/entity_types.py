@@ -4,6 +4,8 @@ from enum import Enum
 
 
 class EntityType(str, Enum):
+    """Entity identifiers understood by the wider business application."""
+
     PROSPECT = "Prospect"
     CASE = "Case"
     CASE_BUSINESS = "CaseBusiness"
@@ -40,6 +42,8 @@ class EntityType(str, Enum):
     CASE_CREDITOR = "CaseCreditor"
 
 
+# Only labels in this mapping are offered to the classifier. The enum above also
+# contains entities used elsewhere in the wider application.
 LABEL_TO_ENTITY_TYPE: dict[str, EntityType] = {
     "Statement of Affairs": EntityType.STATEMENT_OF_AFFAIRS,
     "Payment Request": EntityType.PAYMENT_REQUEST,
@@ -66,6 +70,8 @@ DEFAULT_INTENT_LABELS: tuple[str, ...] = tuple(LABEL_TO_ENTITY_TYPE.keys())
 
 
 def map_label_to_entity_type(label: str) -> EntityType:
+    """Translate a validated business label into its workflow EntityType."""
+
     try:
         return LABEL_TO_ENTITY_TYPE[label]
     except KeyError as exc:

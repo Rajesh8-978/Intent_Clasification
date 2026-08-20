@@ -11,7 +11,11 @@ from intent_classification.text_cleaning import clean_email_text
 
 
 class IntentClassificationService:
-    """Coordinates text cleanup, classifier execution, and EntityType mapping."""
+    """Coordinate text cleanup, model inference, validation, and mapping.
+
+    This service is the business boundary of the module. It prevents raw model
+    output from reaching downstream workflows until the label is validated.
+    """
 
     def __init__(
         self,
@@ -30,10 +34,14 @@ class IntentClassificationService:
         email_text: str,
         labels: Sequence[str] | None = None,
     ) -> IntentClassificationResult:
+        """Classify cleaned email text and return a mapped business result."""
+
         normalized_text = clean_email_text(email_text)
         if not normalized_text:
             raise ValueError("Email text is empty after cleaning.")
 
+        # Callers may supply a temporary label set; otherwise use the configured
+        # business taxonomy from the label provider.
         available_labels = tuple(labels or self._label_provider.get_labels())
         if not available_labels:
             raise ValueError("At least one intent label is required.")
@@ -44,6 +52,8 @@ class IntentClassificationService:
                 available_labels,
                 top_k=self._options.top_k,
             )
+            # Treat the classifier as untrusted input: only configured labels may
+            # be converted into application EntityType values.
             if prediction.label not in available_labels:
                 raise ValueError(
                     f"Classifier returned label {prediction.label!r}, which is not in the configured labels."
@@ -82,6 +92,8 @@ class IntentClassificationService:
         candidates: Sequence[PredictionCandidate],
         available_labels: Sequence[str],
     ) -> tuple[PredictionCandidate, ...]:
+        """Remove unknown candidates and enforce the configured TopK limit."""
+
         filtered = tuple(
             candidate
             for candidate in candidates

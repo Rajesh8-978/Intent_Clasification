@@ -8,6 +8,8 @@ from intent_classification.entity_types import EntityType
 
 @dataclass(frozen=True)
 class PredictionCandidate:
+    """One ranked intent returned by the model."""
+
     label: str
     score: float | None = None
 
@@ -17,6 +19,8 @@ class PredictionCandidate:
 
 @dataclass(frozen=True)
 class ClassificationPrediction:
+    """Internal result produced by an intent classifier implementation."""
+
     label: str
     confidence: float | None = None
     top_predictions: tuple[PredictionCandidate, ...] = field(default_factory=tuple)
@@ -24,6 +28,8 @@ class ClassificationPrediction:
 
 @dataclass(frozen=True)
 class IntentClassificationResult:
+    """Validated, workflow-ready classification returned to callers."""
+
     entity_type: EntityType
     intent_label: str
     confidence: float | None = None

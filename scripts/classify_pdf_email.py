@@ -1,3 +1,5 @@
+"""Command-line entry point for classifying one text-based PDF email."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,6 +10,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# Allow the script to import the package when it is run directly from scripts/.
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -21,6 +24,8 @@ from intent_classification.pdf_text_extractor import extract_text_from_pdf
 
 
 def positive_int(value: str) -> int:
+    """Argparse converter that rejects invalid TopK values early."""
+
     parsed = int(value)
     if parsed < 1:
         raise argparse.ArgumentTypeError("must be at least 1")
@@ -28,6 +33,8 @@ def positive_int(value: str) -> int:
 
 
 async def main() -> int:
+    """Build the classification pipeline and print its JSON result."""
+
     parser = argparse.ArgumentParser(
         description="Classify the business intent of a PDF email."
     )
@@ -47,6 +54,7 @@ async def main() -> int:
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
+    # Keep command-line configuration in the same validated object used by the API.
     options = IntentClassifierOptions(
         model=args.model,
         top_k=args.top_k,
@@ -58,6 +66,8 @@ async def main() -> int:
     )
     service = IntentClassificationService(classifier, options=options)
 
+    # PDF extraction is kept separate from classification so text can also be
+    # supplied directly through IntentClassificationService in other applications.
     email_text = extract_text_from_pdf(args.pdf)
     result = await service.classify_email_text(email_text)
 

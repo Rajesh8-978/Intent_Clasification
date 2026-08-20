@@ -11,13 +11,14 @@ DEFAULT_TOP_K = 3
 
 @dataclass(frozen=True)
 class IntentClassifierOptions:
-    """Configuration for the local zero-shot intent classifier."""
+    """Validated runtime settings for the local zero-shot classifier."""
 
     model: str = DEFAULT_MODEL
     top_k: int = DEFAULT_TOP_K
     device: str | int | None = None
 
     def __post_init__(self) -> None:
+        # Validate once at construction so the model layer receives safe values.
         top_k = int(self.top_k)
         if top_k < 1:
             raise ValueError("IntentClassifier.TopK must be at least 1.")
@@ -37,6 +38,8 @@ class IntentClassifierOptions:
 
     @classmethod
     def from_dict(cls, settings: Mapping[str, Any] | None) -> "IntentClassifierOptions":
+        """Create options from either a root mapping or IntentClassifier section."""
+
         if not settings:
             return cls()
 

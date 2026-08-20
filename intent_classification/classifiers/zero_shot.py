@@ -13,7 +13,11 @@ DEFAULT_ZERO_SHOT_MODEL = "MoritzLaurer/deberta-v3-base-zeroshot-v2.0"
 
 
 class ZeroShotIntentClassifier(IIntentClassifier):
-    """Local NLI classifier that ranks business intent descriptions."""
+    """Rank business intents with a local Natural Language Inference model.
+
+    The model evaluates each detailed label description as a hypothesis about
+    the email. No model fine-tuning or external classification API is required.
+    """
 
     def __init__(
         self,
@@ -33,20 +37,26 @@ class ZeroShotIntentClassifier(IIntentClassifier):
         *,
         top_k: int = 3,
     ) -> ClassificationPrediction:
+        """Return the highest-ranked label and up to ``top_k`` candidates."""
+
         if not labels:
             raise ValueError("At least one intent label is required.")
 
         classifier = await self._get_pipeline()
+        # Detailed hypotheses give the general-purpose model the business meaning
+        # of each short label, while this mapping restores the public label names.
         hypothesis_to_label = {
             build_label_hypothesis(label): label
             for label in labels
         }
+        # Transformers inference is synchronous and CPU-heavy. Running it in a
+        # worker thread keeps callers' asyncio event loops responsive.
         result = await asyncio.to_thread(
             classifier,
             text,
             candidate_labels=list(hypothesis_to_label),
             hypothesis_template="{}",
-            multi_label=False,
+            multi_label=False,  # Exactly one primary intent should win.
         )
         candidates = self._normalize_result(result, hypothesis_to_label)
         selected = candidates[:top_k]
@@ -60,11 +70,15 @@ class ZeroShotIntentClassifier(IIntentClassifier):
         )
 
     async def _get_pipeline(self) -> Any:
+        """Load the large model once, on the first classification request."""
+
         if self._pipeline is None:
             self._pipeline = await asyncio.to_thread(self._create_pipeline)
         return self._pipeline
 
     def _create_pipeline(self) -> Any:
+        """Create the Hugging Face zero-shot pipeline for local inference."""
+
         pipeline_factory = self._pipeline_factory
         if pipeline_factory is None:
             try:
@@ -88,6 +102,8 @@ class ZeroShotIntentClassifier(IIntentClassifier):
         result: Any,
         hypothesis_to_label: dict[str, str],
     ) -> tuple[PredictionCandidate, ...]:
+        """Convert the Transformers response into application result objects."""
+
         if not isinstance(result, dict):
             raise ValueError(f"Zero-shot classifier returned an unsupported result: {result!r}")
 

@@ -52,6 +52,45 @@ The detailed model-facing definitions live in `intent_classification/label_defin
 
 The model runs on CPU by default. A compatible CUDA GPU can improve speed but is not required.
 
+## Docker Deployment
+
+The Docker image uses a portable CPU runtime, runs as a non-root user, and downloads the default model during the image build. The completed image therefore needs no API key and does not download the default model when a container starts.
+
+Start Docker Desktop, then build the image from the project root:
+
+```powershell
+docker build -t intent-classification:latest .
+```
+
+Mount the folder containing the PDF as read-only and pass the container path to the classifier:
+
+```powershell
+docker run --rm `
+  -v "C:\Users\Admin\Downloads:/documents:ro" `
+  intent-classification:latest `
+  "/documents/Vehicle - 2 (1).pdf"
+```
+
+Classify the POD document with the same image:
+
+```powershell
+docker run --rm `
+  -v "C:\Users\Admin\Downloads:/documents:ro" `
+  intent-classification:latest `
+  "/documents/POD -2 (1).pdf"
+```
+
+The PDF is mounted at runtime and is not copied into the image. The `.dockerignore` file also excludes local PDFs, virtual environments, Git data, caches, tests, and environment files from the build context.
+
+To distribute the image through a container registry:
+
+```powershell
+docker tag intent-classification:latest REGISTRY/intent-classification:latest
+docker push REGISTRY/intent-classification:latest
+```
+
+Replace `REGISTRY` with your Docker Hub, Azure Container Registry, Amazon ECR, Google Artifact Registry, or other registry path.
+
 ## Installation
 
 From PowerShell:
@@ -213,6 +252,8 @@ intent_classification/
 scripts/
   classify_pdf_email.py    Command-line entry point
 tests/                     Unit tests
+Dockerfile                 Portable CPU container image
+.dockerignore              Files excluded from Docker builds
 requirements.txt           Runtime dependencies
 ```
 

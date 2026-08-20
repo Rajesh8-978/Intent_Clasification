@@ -7,7 +7,7 @@ from intent_classification.models import ClassificationPrediction
 
 
 class IIntentClassifier(ABC):
-    """Async contract implemented by every intent classifier provider."""
+    """Async boundary between business orchestration and model inference."""
 
     @abstractmethod
     async def predict(
@@ -17,4 +17,6 @@ class IIntentClassifier(ABC):
         *,
         top_k: int = 3,
     ) -> ClassificationPrediction:
+        """Rank the supplied labels for the given text."""
+
         raise NotImplementedError
